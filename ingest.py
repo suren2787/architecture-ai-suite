@@ -3,6 +3,8 @@ from langchain_community.document_loaders import DirectoryLoader, TextLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
+from langchain.schema import Document
+import confluence_sync
 
 def ingest_documents():
     """
@@ -63,6 +65,95 @@ def ingest_documents():
     print(f"Index saved to: {index_path}")
     
     return vectorstore
+
+
+def ingest_from_confluence(space_key=None, labels=None, merge_with_existing=True):
+    """
+    Fetch pages from Confluence and add them to FAISS index.
+    
+    Args:
+        space_key (str): Confluence space key. If None, uses config value
+        labels (list): List of labels to filter pages. If None, uses config value
+        merge_with_existing (bool): If True, merge with existing index. If False, replace it.
+        
+    Returns:
+        tuple: (success, message, num_pages)
+    """
+    # Fetch pages from Confluence
+    print("Fetching pages from Confluence...")
+    success, pages, error_msg = confluence_sync.fetch_space_pages(space_key, labels)
+    
+    if not success:
+        return False, f"❌ Failed to fetch Confluence pages: {error_msg}", 0
+    
+    if not pages:
+        return False, "⚠️ No pages found matching the criteria", 0
+    
+    print(f"✅ Fetched {len(pages)} pages from Confluence")
+    
+    # Convert Confluence pages to LangChain documents
+    documents = []
+    for page in pages:
+        doc = Document(
+            page_content=page['content'],
+            metadata={
+                'source': f"confluence:{page['title']}",
+                'title': page['title'],
+                'confluence_id': page['id'],
+                'version': page['version']
+            }
+        )
+        documents.append(doc)
+    
+    # Split documents into chunks
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=1000,
+        chunk_overlap=200,
+        length_function=len,
+        separators=["\n\n", "\n", " ", ""]
+    )
+    
+    print("Splitting Confluence pages into chunks...")
+    chunks = text_splitter.split_documents(documents)
+    print(f"Created {len(chunks)} chunks from Confluence pages")
+    
+    # Initialize embeddings
+    print("Initializing embeddings model...")
+    embeddings = HuggingFaceEmbeddings(
+        model_name="sentence-transformers/all-MiniLM-L6-v2",
+        model_kwargs={'device': 'cpu'}
+    )
+    
+    index_path = os.path.join(os.path.dirname(__file__), 'faiss_index')
+    
+    # Merge with existing or create new
+    if merge_with_existing and os.path.exists(os.path.join(index_path, 'index.faiss')):
+        print("Loading existing FAISS index...")
+        try:
+            existing_vectorstore = FAISS.load_local(
+                index_path, 
+                embeddings,
+                allow_dangerous_deserialization=True
+            )
+            print("Merging Confluence pages with existing index...")
+            existing_vectorstore.add_documents(chunks)
+            vectorstore = existing_vectorstore
+            print(f"✅ Merged {len(chunks)} Confluence chunks with existing index")
+        except Exception as e:
+            print(f"⚠️ Could not load existing index: {e}. Creating new index...")
+            vectorstore = FAISS.from_documents(chunks, embeddings)
+    else:
+        print("Creating new FAISS index from Confluence pages...")
+        vectorstore = FAISS.from_documents(chunks, embeddings)
+    
+    # Save the updated vectorstore
+    print(f"Saving FAISS index to: {index_path}")
+    vectorstore.save_local(index_path)
+    
+    success_msg = f"✅ Successfully synced {len(pages)} pages ({len(chunks)} chunks) from Confluence"
+    print(success_msg)
+    
+    return True, success_msg, len(pages)
 
 
 if __name__ == "__main__":

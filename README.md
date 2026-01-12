@@ -138,7 +138,22 @@ flowchart TB
    pip install anthropic
    ```
 
-4. **Configure your LLM provider:**
+4. **Configure for your organization:**
+   
+   Copy the organization config template:
+   ```bash
+   cp config.env.example config.env
+   ```
+   
+   Edit `config.env` to customize:
+   - **ORGANIZATION_NAME** - Your company name
+   - **ORGANIZATION_ICON** - Emoji for branding
+   - **PRIORITY_ADRS** - Your critical ADRs (e.g., ADR-007,ADR-008)
+   - **RERANKING_KEYWORDS** - Your tech stack keywords
+   - **AUDIT_ASPECTS** - What to check in audits
+   - **AUDIT_CUSTOM_INSTRUCTIONS** - Custom compliance requirements
+
+5. **Configure your LLM provider:**
    
    Copy the example environment file and configure it:
    ```bash
@@ -179,7 +194,7 @@ flowchart TB
    ANTHROPIC_API_KEY=sk-ant-your-api-key-here
    ```
 
-5. **Ingest your documents:**
+6. **Ingest your documents:**
    
    This processes all Markdown files in the `docs/` folder and creates the vector index:
    ```bash
@@ -191,7 +206,7 @@ flowchart TB
    ✅ Successfully created FAISS index with 42 chunks
    ```
 
-6. **Run the app:**
+7. **Run the app:**
    ```bash
    streamlit run app.py
    ```
@@ -246,6 +261,41 @@ The system is **model-agnostic** and supports multiple LLM providers. Configure 
 | **Anthropic** | `claude-3-opus-20240229`<br>`claude-3-sonnet-20240229` | `ANTHROPIC_API_KEY` |
 
 The UI will automatically display which provider and model are currently active.
+
+## 🏢 Organization Customization
+
+The suite is **fully organization-agnostic** and can be customized without modifying code:
+
+### Quick Setup for Your Organization
+
+1. Copy `config.env.example` to `config.env`
+2. Customize these settings:
+
+```env
+# Your organization branding
+ORGANIZATION_NAME=Acme Corp
+ORGANIZATION_ICON=🚀
+
+# Your critical ADRs
+PRIORITY_ADRS=ADR-001,ADR-005,ADR-012
+
+# Your tech stack keywords (boosts search relevance)
+RERANKING_KEYWORDS=azure,kubernetes,microservices,gdpr,pii
+
+# What to check in audits
+AUDIT_ASPECTS=Security,GDPR Compliance,Data Residency,API Design,Monitoring
+
+# Custom compliance requirements
+AUDIT_CUSTOM_INSTRUCTIONS=Ensure all solutions meet ISO 27001 and FedRAMP requirements.
+```
+
+3. The UI, prompts, and audit logic will automatically use your settings!
+
+**Benefits:**
+- ✅ No code changes needed
+- ✅ Easy to version control per organization
+- ✅ Share the same codebase across multiple organizations
+- ✅ Quick setup for new deployments
 
 ### Embeddings Model
 
@@ -316,14 +366,20 @@ That's it! The new docs will be searchable immediately.
 
 ## 💡 Future Ideas
 
-Some things I'm thinking about adding:
+Some things we're thinking about adding:
 
-- [ ] Support for PDF and DOCX files
+- [ ] **Vision-based diagram analysis** - Use GPT-4 Vision/Claude to analyze architecture diagrams from Confluence
+  - Extract and review component diagrams, data flow diagrams
+  - Validate diagrams against ADR-007 (data residency), ADR-008 (auth flows)
+  - Identify missing components or compliance gaps visually
+- [ ] Support for PDF and DOCX files in knowledge base
 - [ ] Conversation memory (multi-turn Q&A)
 - [ ] Admin panel to manage docs
-- [ ] Export chat history
-- [ ] Support for other LLMs (Claude, GPT-4, etc.)
+- [ ] Export chat history and audit reports
+- [ ] ADR Validator mode (bi-directional validation between decisions and standards)
 - [ ] Docker containerization
+- [ ] Slack/Teams integration for audit notifications
+- [ ] Export audit results back to Confluence as comments
 
 ## 📄 License
 

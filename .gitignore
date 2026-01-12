@@ -3,6 +3,9 @@
 .env.local
 .env.*.local
 
+# Organization configuration (may contain sensitive info)
+config.env
+
 # Python
 __pycache__/
 *.py[cod]

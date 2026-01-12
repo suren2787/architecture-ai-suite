@@ -4,6 +4,7 @@ import os
 from dotenv import load_dotenv
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
+import config
 
 # Load environment variables from .env file
 load_dotenv()
@@ -193,7 +194,7 @@ def invoke_deepseek_r1(prompt, region_name=None, max_tokens=1024, temperature=0.
 
 def rerank_chunks(docs, question):
     """
-    Rerank retrieved chunks to prioritize those mentioning AWS, PII, or DDD if relevant to the query.
+    Rerank retrieved chunks to prioritize those mentioning configured keywords if relevant to the query.
     
     Args:
         docs (list): List of Document objects from FAISS
@@ -202,8 +203,8 @@ def rerank_chunks(docs, question):
     Returns:
         list: Reranked list of documents
     """
-    # Keywords to prioritize
-    priority_keywords = ['aws', 'pii', 'ddd', 'domain-driven']
+    # Get priority keywords from config
+    priority_keywords = config.RERANKING_KEYWORDS
     question_lower = question.lower()
     
     # Check if question mentions any priority keywords
@@ -285,11 +286,15 @@ def ask_auditor(question):
         })
     
     # Construct the prompt with explicit ADR citation requirement
+    priority_adrs_clause = ""
+    if config.PRIORITY_ADRS:
+        adrs_list = ", ".join(config.PRIORITY_ADRS)
+        priority_adrs_clause = f" If the retrieved context contains a priority ADR ({adrs_list}), you MUST explicitly state 'Based on [ADR-XXX]...' at the beginning of your answer before providing the details."
+    
     prompt = (
-        "System: You are a Digital Bank AI Architect. "
+        f"System: You are a {config.ORG_NAME} AI Architect. "
         f"Using ONLY the following context: {context}, answer this question: {question}. "
-        "IMPORTANT: If the retrieved context contains an ADR (e.g., ADR-007), you MUST explicitly state "
-        "'Based on ADR-XXX...' at the beginning of your answer before providing the details. "
+        f"IMPORTANT:{priority_adrs_clause} "
         "If the answer is not in the context, say you do not know."
     )
     
