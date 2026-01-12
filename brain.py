@@ -257,29 +257,51 @@ def ask_auditor(question):
     context = "\n\n".join([doc.page_content for doc in relevant_docs])
     sources = []
     
-    # Create a mapping of documents to their original scores
-    doc_score_map = {id(doc): score for doc, score in docs_with_scores}
+    # FAISS similarity_search_with_score returns L2 (Euclidean) distance by default
+    # Lower distance = better match (more similar vectors)
+    # Typical range for normalized embeddings: 0.0 (identical) to 2.0 (very different)
+    # 
+    # Confidence score calculation based on FAISS distance metrics:
+    # - Distance < 0.8: High confidence (very similar semantic meaning)
+    # - Distance 0.8-1.5: Medium confidence (related content)
+    # - Distance > 1.5: Low confidence (potentially tangential)
+    #
+    # Note: These thresholds are calibrated for Titan embeddings (1024-dim, normalized)
     
     for doc in relevant_docs:
         source_path = doc.metadata.get("source", "unknown")
-        # Get the similarity score for this document (lower is better in FAISS)
-        similarity_score = doc_score_map.get(id(doc), 1.0)
         
-        # Calculate confidence with adjusted thresholds for FAISS L2 distance
-        # Lower scores = better match (typical range: 0.5-3.0 for embeddings)
-        if similarity_score < 1.2:
+        # Find the FAISS distance score for this document
+        # Match by document content since reranking may have changed order
+        similarity_score = None
+        for original_doc, score in docs_with_scores:
+            if original_doc.page_content == doc.page_content:
+                similarity_score = score
+                break
+        
+        # Fallback if not found (shouldn't happen)
+        if similarity_score is None:
+            similarity_score = 2.0
+        
+        # Calculate confidence based on FAISS L2 distance
+        # Distance formula: sqrt(sum((v1[i] - v2[i])^2))
+        if similarity_score < 0.8:
             confidence = "High"
-        elif similarity_score < 2.0:
+            confidence_emoji = "🟢"
+        elif similarity_score < 1.5:
             confidence = "Medium"
+            confidence_emoji = "🟡"
         else:
             confidence = "Low"
+            confidence_emoji = "🔴"
         
         sources.append({
             "source": source_path,
             "filename": os.path.basename(source_path),
             "content": doc.page_content,
-            "similarity_score": similarity_score,
-            "confidence": confidence
+            "similarity_score": round(similarity_score, 3),  # Round for readability
+            "confidence": confidence,
+            "confidence_emoji": confidence_emoji
         })
     
     # Construct the prompt with explicit ADR citation requirement

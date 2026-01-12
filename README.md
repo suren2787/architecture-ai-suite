@@ -189,6 +189,58 @@ CONFLUENCE_LABELS=adr,standards        # Filter pages by labels
 
 No code changes needed to customize for your org. Same codebase works everywhere.
 
+## Security & Data Privacy
+
+**What Gets Sent to the LLM:**
+- Architecture decision records (ADRs)
+- Design patterns and standards
+- Technical policies and guidelines
+- Solution design documents (architecture metadata)
+
+**What NEVER Gets Sent:**
+- ❌ Customer PII (Personal Identifiable Information)
+- ❌ Production data or credentials
+- ❌ Sensitive business data
+- ❌ API keys or secrets
+
+**Data Processing:**
+- Only architectural and policy documents are embedded and queried
+- Design documents submitted for audit contain technical architecture (not customer data)
+- All LLM requests contain architectural context only - no business-sensitive information
+- FAISS embeddings run locally - no external calls for search
+
+**For Regulated Industries (Banks, Healthcare, Finance):**
+- ✅ Compliant with data residency requirements (embeddings stored locally)
+- ✅ No customer data exposure risk (architecture docs only)
+- ✅ Audit trail available (all queries can be logged)
+- ✅ Air-gapped deployment possible (use local LLM instead of cloud)
+- ✅ Configurable for on-premise deployment
+
+**Hong Kong Digital Bank Requirements:**
+This tool is designed for architecture governance only. It processes:
+- Technical architecture documents
+- Infrastructure designs
+- Security policies and controls
+- Compliance frameworks and ADRs
+
+It does NOT process or have access to:
+- Customer financial data
+- Transaction records
+- Customer identification documents
+- Account balances or payment information
+
+**Recommendation:** Deploy in a separate VPC/network segment from production systems for additional isolation.
+
+## Sample Output
+
+Want to see what the auditor produces? Check out the [`samples/`](samples/) folder:
+
+- [`sample_design.md`](samples/sample_design.md) - Example e-commerce design document
+- [`sample_audit_report.md`](samples/sample_audit_report.md) - Full audit output showing compliance findings
+- Demonstrates the "product" - what you get from the Solution Auditor
+
+The sample shows a realistic audit finding non-compliant data residency (database in us-east-1 instead of Hong Kong's ap-east-1) and authentication patterns not matching ADR-008.
+
 ## 📝 Adding New Documents
 
 1. Drop your Markdown files into the `docs/` folder

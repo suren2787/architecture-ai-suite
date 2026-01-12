@@ -144,15 +144,11 @@ with tab1:
                             similarity_score = src.get("similarity_score", 0.0)
                             
                             # Create expander with filename and confidence badge
-                            confidence_color = {
-                                "High": "🟢",
-                                "Medium": "🟡",
-                                "Low": "🔴"
-                            }.get(confidence, "⚪")
+                            confidence_emoji = src.get("confidence_emoji", "⚪")
                             
-                            with st.expander(f"{confidence_color} **Source {idx}: {filename}** | Confidence: {confidence}"):
+                            with st.expander(f"{confidence_emoji} **Source {idx}: {filename}** | Confidence: {confidence}"):
                                 st.markdown(f"**Filename:** {filename}")
-                                st.markdown(f"**Confidence Score:** {confidence} _(similarity: {similarity_score:.3f})_")
+                                st.markdown(f"**Confidence Score:** {confidence} _(FAISS distance: {similarity_score:.3f})_")
                                 st.markdown("**Relevant Content:**")
                                 st.markdown(f"> _{content}_")
                     else:
