@@ -1,0 +1,11 @@
+boto3
+streamlit
+langchain
+langchain-aws
+langchain-community
+langchain-huggingface
+langchain-text-splitters
+pypdf
+python-dotenv
+faiss-cpu
+sentence-transformers
