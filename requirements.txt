@@ -9,3 +9,10 @@ pypdf
 python-dotenv
 faiss-cpu
 sentence-transformers
+
+# Optional: Install based on your MODEL_PROVIDER
+# For OpenAI (MODEL_PROVIDER=openai):
+# openai
+
+# For Anthropic (MODEL_PROVIDER=anthropic):
+# anthropic

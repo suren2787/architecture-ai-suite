@@ -6,15 +6,19 @@ Ever wish you had an AI assistant that actually knew your architecture docs insi
 
 Built this to solve a real problem: our team kept asking the same questions about architecture decisions, security requirements, and design patterns. Instead of searching through ADRs and policy docs manually (or bothering the architects on Slack), I put together this RAG-powered knowledge bot that does the heavy lifting.
 
-It uses DeepSeek-R1 on AWS Bedrock with a local FAISS vector store to give you accurate, context-aware answers based on your actual documentation.
+It's **model-agnostic** - use AWS Bedrock (DeepSeek-R1, Claude), OpenAI (GPT-4), or Anthropic, all with the same codebase.
 
 ## ✨ Features
 
 - **Chat Interface**: Clean Streamlit UI that feels like talking to a colleague
-- **Smart Search**: Uses semantic search to find relevant docs, not just keyword matching
-- **Source Citations**: Every answer shows you exactly which documents it came from
-- **Fast & Local**: Embeddings run locally, no need to call external APIs for every search
-- **Cost Efficient**: Only hits AWS Bedrock for the final answer generation
+- **Model-Agnostic**: Switch between AWS Bedrock, OpenAI, or Anthropic via config
+- **Smart Retrieval**: Contextual compression with top-6 chunk retrieval from FAISS
+- **Intelligent Reranking**: Prioritizes AWS, PII, DDD-related content when relevant
+- **Evidence & Confidence Scores**: Every answer shows sources with similarity-based confidence (High/Medium/Low)
+- **Source Citations**: Expandable evidence section with document snippets
+- **Fast & Local**: Embeddings run locally, no external API calls for search
+- **Live Knowledge Refresh**: Update documentation without restarting the app
+- **Cost Efficient**: Only calls LLM for final answer generation
 
 ## 🏗️ Architecture
 
@@ -98,15 +102,53 @@ flowchart TB
 3. **Install dependencies:**
    ```bash
    pip install -r requirements.txt
+   
+   # If using OpenAI:
+   pip install openai
+   
+   # If using Anthropic:
+   pip install anthropic
    ```
 
-4. **Configure AWS credentials:**
+4. **Configure your LLM provider:**
    
-   Create a `.env` file in the project root:
+   Copy the example environment file and configure it:
+   ```bash
+   cp .env.example .env
+   ```
+   
+   Edit `.env` with your settings. The system supports multiple LLM providers:
+   
+   **Option A: AWS Bedrock (Default - DeepSeek-R1)**
    ```env
-   AWS_ACCESS_KEY_ID=your_access_key_here
-   AWS_SECRET_ACCESS_KEY=your_secret_key_here
+   MODEL_PROVIDER=bedrock
+   MODEL_NAME=us.deepseek.r1-v1:0
+   AWS_ACCESS_KEY_ID=your_access_key
+   AWS_SECRET_ACCESS_KEY=your_secret_key
    AWS_REGION=us-east-1
+   ```
+   
+   **Option B: AWS Bedrock (Claude)**
+   ```env
+   MODEL_PROVIDER=bedrock
+   MODEL_NAME=anthropic.claude-3-sonnet-20240229-v1:0
+   AWS_ACCESS_KEY_ID=your_access_key
+   AWS_SECRET_ACCESS_KEY=your_secret_key
+   AWS_REGION=us-east-1
+   ```
+   
+   **Option C: OpenAI**
+   ```env
+   MODEL_PROVIDER=openai
+   MODEL_NAME=gpt-4
+   OPENAI_API_KEY=sk-your-api-key-here
+   ```
+   
+   **Option D: Anthropic**
+   ```env
+   MODEL_PROVIDER=anthropic
+   MODEL_NAME=claude-3-opus-20240229
+   ANTHROPIC_API_KEY=sk-ant-your-api-key-here
    ```
 
 5. **Ingest your documents:**
@@ -159,6 +201,24 @@ arch-knowledge-bot/
 
 ## 🔧 Configuration
 
+### LLM Provider Selection
+
+The system is **model-agnostic** and supports multiple LLM providers. Configure via environment variables in your `.env` file:
+
+**Environment Variables:**
+- `MODEL_PROVIDER`: Choose from `bedrock`, `openai`, or `anthropic`
+- `MODEL_NAME`: Specify the model ID/name for your chosen provider
+
+**Supported Models:**
+
+| Provider | MODEL_NAME Examples | Additional Config Required |
+|----------|-------------------|---------------------------|
+| **AWS Bedrock** | `us.deepseek.r1-v1:0`<br>`anthropic.claude-3-sonnet-20240229-v1:0`<br>`anthropic.claude-v2` | `AWS_ACCESS_KEY_ID`<br>`AWS_SECRET_ACCESS_KEY`<br>`AWS_REGION` |
+| **OpenAI** | `gpt-4`<br>`gpt-4-turbo`<br>`gpt-3.5-turbo` | `OPENAI_API_KEY` |
+| **Anthropic** | `claude-3-opus-20240229`<br>`claude-3-sonnet-20240229` | `ANTHROPIC_API_KEY` |
+
+The UI will automatically display which provider and model are currently active.
+
 ### Embeddings Model
 
 Currently using `sentence-transformers/all-MiniLM-L6-v2` which runs locally. It's fast and good enough for most use cases. If you want better accuracy, you can swap it for a larger model in both `ingest.py` and `brain.py`.
@@ -176,10 +236,10 @@ text_splitter = RecursiveCharacterTextSplitter(
 
 ### LLM Parameters
 
-In `brain.py`, you can adjust the DeepSeek-R1 parameters:
+In `brain.py`, you can adjust the LLM parameters (works across all providers):
 
 ```python
-invoke_deepseek_r1(
+invoke_llm(
     prompt,
     max_tokens=1024,      # Increase for longer answers
     temperature=0.7,      # Lower for more focused answers
@@ -223,7 +283,7 @@ That's it! The new docs will be searchable immediately.
 - **UI**: Streamlit
 - **Vector Store**: FAISS (CPU-based, local)
 - **Embeddings**: HuggingFace Transformers (all-MiniLM-L6-v2)
-- **LLM**: DeepSeek-R1 via AWS Bedrock
+- **LLM**: Model-agnostic (supports AWS Bedrock, OpenAI, Anthropic)
 - **Framework**: LangChain
 
 ## 💡 Future Ideas

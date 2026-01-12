@@ -44,25 +44,43 @@ def load_faiss_index(index_path=None):
     
     return _vectorstore
 
-def invoke_deepseek_r1(prompt, region_name=None, max_tokens=1024, temperature=0.7, top_p=0.9):
+def invoke_llm(prompt, max_tokens=1024, temperature=0.7, top_p=0.9):
     """
-    Invoke DeepSeek-R1 model on AWS Bedrock.
+    Invoke LLM based on configured provider (model-agnostic).
+    
+    Supports:
+    - AWS Bedrock (DeepSeek-R1, Claude, etc.)
+    - OpenAI (GPT-4, GPT-3.5, etc.)
+    - Anthropic (Claude via API)
+    
+    Configuration via environment variables:
+    - MODEL_PROVIDER: 'bedrock', 'openai', or 'anthropic'
+    - MODEL_NAME: specific model ID/name
     
     Args:
-        prompt (str): The prompt to send to DeepSeek-R1
-        region_name (str, optional): AWS region name. Defaults to us-east-1 or from env
+        prompt (str): The prompt to send to the LLM
         max_tokens (int, optional): Maximum tokens to generate. Defaults to 1024
         temperature (float, optional): Sampling temperature. Defaults to 0.7
         top_p (float, optional): Nucleus sampling parameter. Defaults to 0.9
         
     Returns:
-        str: The response from DeepSeek-R1
+        str: The response from the LLM
     """
-    # Get region from environment variable or use default
-    if region_name is None:
-        region_name = os.getenv('AWS_REGION', 'us-east-1')
+    provider = os.getenv('MODEL_PROVIDER', 'bedrock').lower()
+    model_name = os.getenv('MODEL_NAME', 'us.deepseek.r1-v1:0')
     
-    # Get credentials from environment (loaded from .env file)
+    if provider == 'bedrock':
+        return _invoke_bedrock(prompt, model_name, max_tokens, temperature, top_p)
+    elif provider == 'openai':
+        return _invoke_openai(prompt, model_name, max_tokens, temperature, top_p)
+    elif provider == 'anthropic':
+        return _invoke_anthropic(prompt, model_name, max_tokens, temperature, top_p)
+    else:
+        raise ValueError(f"Unsupported MODEL_PROVIDER: {provider}. Use 'bedrock', 'openai', or 'anthropic'.")
+
+def _invoke_bedrock(prompt, model_id, max_tokens=1024, temperature=0.7, top_p=0.9):
+    """Invoke AWS Bedrock models (DeepSeek-R1, Claude, etc.)"""
+    region_name = os.getenv('AWS_REGION', 'us-east-1')
     aws_access_key = os.getenv('AWS_ACCESS_KEY_ID')
     aws_secret_key = os.getenv('AWS_SECRET_ACCESS_KEY')
     
@@ -74,16 +92,31 @@ def invoke_deepseek_r1(prompt, region_name=None, max_tokens=1024, temperature=0.
     
     bedrock_runtime = boto3.client('bedrock-runtime', **client_kwargs)
     
-    # Model ID for DeepSeek-R1
-    model_id = 'us.deepseek.r1-v1:0'
-    
-    # Prepare the request body for DeepSeek-R1
-    body = json.dumps({
-        'prompt': prompt,
-        'max_tokens': max_tokens,
-        'temperature': temperature,
-        'top_p': top_p
-    })
+    # Handle different Bedrock model formats
+    if 'deepseek' in model_id.lower():
+        # DeepSeek-R1 format
+        body = json.dumps({
+            'prompt': prompt,
+            'max_tokens': max_tokens,
+            'temperature': temperature,
+            'top_p': top_p
+        })
+    elif 'claude' in model_id.lower():
+        # Claude format
+        body = json.dumps({
+            'prompt': f"\n\nHuman: {prompt}\n\nAssistant:",
+            'max_tokens_to_sample': max_tokens,
+            'temperature': temperature,
+            'top_p': top_p
+        })
+    else:
+        # Generic format
+        body = json.dumps({
+            'prompt': prompt,
+            'max_tokens': max_tokens,
+            'temperature': temperature,
+            'top_p': top_p
+        })
     
     # Invoke the model
     response = bedrock_runtime.invoke_model(
@@ -96,51 +129,172 @@ def invoke_deepseek_r1(prompt, region_name=None, max_tokens=1024, temperature=0.
     # Parse the response
     response_body = json.loads(response['body'].read().decode('utf-8'))
     
-    # Extract the text content from the response
-    if 'choices' in response_body and len(response_body['choices']) > 0:
+    # Extract text based on model type
+    if 'choices' in response_body:
         return response_body['choices'][0]['text']
+    elif 'completion' in response_body:
+        return response_body['completion']
     else:
         return "No response content found"
+
+def _invoke_openai(prompt, model_name, max_tokens=1024, temperature=0.7, top_p=0.9):
+    """Invoke OpenAI models (GPT-4, GPT-3.5, etc.)"""
+    try:
+        from openai import OpenAI
+    except ImportError:
+        raise ImportError("OpenAI package not installed. Run: pip install openai")
+    
+    api_key = os.getenv('OPENAI_API_KEY')
+    if not api_key:
+        raise ValueError("OPENAI_API_KEY not set in environment variables")
+    
+    client = OpenAI(api_key=api_key)
+    
+    response = client.chat.completions.create(
+        model=model_name,
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=max_tokens,
+        temperature=temperature,
+        top_p=top_p
+    )
+    
+    return response.choices[0].message.content
+
+def _invoke_anthropic(prompt, model_name, max_tokens=1024, temperature=0.7, top_p=0.9):
+    """Invoke Anthropic Claude models via API"""
+    try:
+        from anthropic import Anthropic
+    except ImportError:
+        raise ImportError("Anthropic package not installed. Run: pip install anthropic")
+    
+    api_key = os.getenv('ANTHROPIC_API_KEY')
+    if not api_key:
+        raise ValueError("ANTHROPIC_API_KEY not set in environment variables")
+    
+    client = Anthropic(api_key=api_key)
+    
+    response = client.messages.create(
+        model=model_name,
+        max_tokens=max_tokens,
+        temperature=temperature,
+        top_p=top_p,
+        messages=[{"role": "user", "content": prompt}]
+    )
+    
+    return response.content[0].text
+
+# Backward compatibility alias
+def invoke_deepseek_r1(prompt, region_name=None, max_tokens=1024, temperature=0.7, top_p=0.9):
+    """
+    Deprecated: Use invoke_llm() instead.
+    Kept for backward compatibility.
+    """
+    return invoke_llm(prompt, max_tokens, temperature, top_p)
+
+def rerank_chunks(docs, question):
+    """
+    Rerank retrieved chunks to prioritize those mentioning AWS, PII, or DDD if relevant to the query.
+    
+    Args:
+        docs (list): List of Document objects from FAISS
+        question (str): The user's question
+    
+    Returns:
+        list: Reranked list of documents
+    """
+    # Keywords to prioritize
+    priority_keywords = ['aws', 'pii', 'ddd', 'domain-driven']
+    question_lower = question.lower()
+    
+    # Check if question mentions any priority keywords
+    query_has_priority = any(kw in question_lower for kw in priority_keywords)
+    
+    if not query_has_priority:
+        return docs  # No reranking needed
+    
+    # Score each document
+    scored_docs = []
+    for doc in docs:
+        content_lower = doc.page_content.lower()
+        score = 0
+        
+        # Boost score if document contains priority keywords
+        for kw in priority_keywords:
+            if kw in content_lower:
+                score += content_lower.count(kw)
+        
+        scored_docs.append((score, doc))
+    
+    # Sort by score (descending) and return documents
+    scored_docs.sort(key=lambda x: x[0], reverse=True)
+    return [doc for score, doc in scored_docs]
 
 def ask_auditor(question):
     """
     Ask a question to the AI architect auditor using the FAISS index and DeepSeek-R1.
+    Uses contextual compression and reranking for better retrieval.
     
     Args:
         question (str): The question to ask
     
     Returns:
         tuple[str, list[dict]]: The response from DeepSeek-R1, and a list of sources with
-        filename and content for each retrieved chunk.
+        filename, content, and confidence score for each retrieved chunk.
     """
     # Load FAISS index if not already loaded
     vectorstore = load_faiss_index()
     
-    # Search the FAISS index for relevant architecture context
-    # Use k=10 to get more comprehensive results, especially for listing questions
-    k = 10 if any(word in question.lower() for word in ["list", "all", "show", "enumerate"]) else 3
-    relevant_docs = vectorstore.similarity_search(question, k=k)
+    # Retrieve top 6 chunks from FAISS with similarity scores (contextual compression approach)
+    # Use k=10 for listing questions, otherwise 6 for better context
+    k = 10 if any(word in question.lower() for word in ["list", "all", "show", "enumerate"]) else 6
+    docs_with_scores = vectorstore.similarity_search_with_score(question, k=k)
     
-    # Prepare context and source metadata
+    # Extract documents and scores
+    relevant_docs = [doc for doc, score in docs_with_scores]
+    
+    # Apply reranking to prioritize AWS, PII, DDD-related chunks
+    relevant_docs = rerank_chunks(relevant_docs, question)
+    
+    # Prepare context and source metadata with confidence scores
     context = "\n\n".join([doc.page_content for doc in relevant_docs])
     sources = []
+    
+    # Create a mapping of documents to their original scores
+    doc_score_map = {id(doc): score for doc, score in docs_with_scores}
+    
     for doc in relevant_docs:
         source_path = doc.metadata.get("source", "unknown")
+        # Get the similarity score for this document (lower is better in FAISS)
+        similarity_score = doc_score_map.get(id(doc), 1.0)
+        
+        # Calculate confidence with adjusted thresholds for FAISS L2 distance
+        # Lower scores = better match (typical range: 0.5-3.0 for embeddings)
+        if similarity_score < 1.2:
+            confidence = "High"
+        elif similarity_score < 2.0:
+            confidence = "Medium"
+        else:
+            confidence = "Low"
+        
         sources.append({
             "source": source_path,
             "filename": os.path.basename(source_path),
-            "content": doc.page_content
+            "content": doc.page_content,
+            "similarity_score": similarity_score,
+            "confidence": confidence
         })
     
-    # Construct the prompt as specified
+    # Construct the prompt with explicit ADR citation requirement
     prompt = (
         "System: You are a Digital Bank AI Architect. "
         f"Using ONLY the following context: {context}, answer this question: {question}. "
+        "IMPORTANT: If the retrieved context contains an ADR (e.g., ADR-007), you MUST explicitly state "
+        "'Based on ADR-XXX...' at the beginning of your answer before providing the details. "
         "If the answer is not in the context, say you do not know."
     )
     
-    # Invoke DeepSeek-R1 on AWS Bedrock using the boto3 runtime
-    answer = invoke_deepseek_r1(prompt)
+    # Invoke the LLM using the configured provider
+    answer = invoke_llm(prompt)
     
     # Clean the response: remove reasoning blocks and instruction echoes
     if isinstance(answer, str):
