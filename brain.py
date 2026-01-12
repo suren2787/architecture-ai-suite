@@ -2,8 +2,8 @@ import boto3
 import json
 import os
 from dotenv import load_dotenv
-from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
+from embeddings import get_embeddings
 import config
 
 # Load environment variables from .env file
@@ -34,11 +34,8 @@ def load_faiss_index(index_path=None):
     if not os.path.exists(index_path):
         raise FileNotFoundError(f"FAISS index not found at: {index_path}. Please run ingest.py first.")
     
-    # Initialize embeddings using the same model used during ingestion
-    embeddings = HuggingFaceEmbeddings(
-        model_name="sentence-transformers/all-MiniLM-L6-v2",
-        model_kwargs={'device': 'cpu'}
-    )
+    # Initialize embeddings using configured provider
+    embeddings = get_embeddings()
     
     # Load the FAISS index
     _vectorstore = FAISS.load_local(index_path, embeddings, allow_dangerous_deserialization=True)

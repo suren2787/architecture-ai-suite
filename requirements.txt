@@ -3,18 +3,21 @@ streamlit
 langchain
 langchain-aws
 langchain-community
-langchain-huggingface
 langchain-text-splitters
 pypdf
 python-dotenv
 faiss-cpu
-sentence-transformers
 beautifulsoup4
 requests
 
-# Optional: Install based on your MODEL_PROVIDER
-# For OpenAI (MODEL_PROVIDER=openai):
+# Optional: Install based on your MODEL_PROVIDER and EMBEDDING_PROVIDER
+# For OpenAI LLM (MODEL_PROVIDER=openai):
+# langchain-openai
 # openai
 
-# For Anthropic (MODEL_PROVIDER=anthropic):
+# For Anthropic LLM (MODEL_PROVIDER=anthropic):
 # anthropic
+
+# For HuggingFace embeddings (EMBEDDING_PROVIDER=huggingface):
+# langchain-huggingface
+# sentence-transformers

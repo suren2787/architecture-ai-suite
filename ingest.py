@@ -1,10 +1,10 @@
 import os
 from langchain_community.document_loaders import DirectoryLoader, TextLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
-from langchain.schema import Document
+from langchain_core.documents import Document
 import confluence_sync
+from embeddings import get_embeddings
 
 def ingest_documents():
     """
@@ -45,12 +45,9 @@ def ingest_documents():
     chunks = text_splitter.split_documents(documents)
     print(f"Created {len(chunks)} chunks")
     
-    # Initialize embeddings using HuggingFace model (runs locally)
-    print("Initializing embeddings model (this may take a moment on first run)...")
-    embeddings = HuggingFaceEmbeddings(
-        model_name="sentence-transformers/all-MiniLM-L6-v2",
-        model_kwargs={'device': 'cpu'}
-    )
+    # Initialize embeddings using configured provider
+    print("Initializing embeddings model...")
+    embeddings = get_embeddings()
     
     # Create FAISS vectorstore
     print("Creating FAISS vectorstore...")
@@ -117,12 +114,9 @@ def ingest_from_confluence(space_key=None, labels=None, merge_with_existing=True
     chunks = text_splitter.split_documents(documents)
     print(f"Created {len(chunks)} chunks from Confluence pages")
     
-    # Initialize embeddings
+    # Initialize embeddings using configured provider
     print("Initializing embeddings model...")
-    embeddings = HuggingFaceEmbeddings(
-        model_name="sentence-transformers/all-MiniLM-L6-v2",
-        model_kwargs={'device': 'cpu'}
-    )
+    embeddings = get_embeddings()
     
     index_path = os.path.join(os.path.dirname(__file__), 'faiss_index')
     
