@@ -9,7 +9,7 @@ load_dotenv()
 
 # Page configuration
 st.set_page_config(
-    page_title="Digital Bank: Architecture Knowledge Bot",
+    page_title="Digital Bank: Architecture AI Suite",
     page_icon="🏦",
     layout="wide"
 )
@@ -67,8 +67,9 @@ with st.sidebar:
         st.rerun()
 
 # Main title
-st.title("🏦 Digital Bank: Architecture Knowledge Bot")
-st.markdown("Ask questions about architecture standards, security policies, and design decisions.")
+st.title("🏦 Digital Bank: Architecture AI Suite")
+st.markdown("**Mode: Knowledge Bot** - Ask questions about architecture standards, security policies, and design decisions.")
+st.info("💡 Coming Soon: Solution Design Audit | ADR Validator")
 
 # Display chat history
 for message in st.session_state.messages:

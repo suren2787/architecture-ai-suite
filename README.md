@@ -1,6 +1,29 @@
-# 🏦 Digital Bank Architecture Knowledge Bot
+# 🏦 Digital Bank Architecture AI Suite
 
-Ever wish you had an AI assistant that actually knew your architecture docs inside and out? Well, here you go! This knowledge bot helps you quickly find answers about architecture decisions, security policies, and design standards without digging through dozens of Markdown files.
+An intelligent AI-powered suite of tools to help architecture teams maintain quality, consistency, and compliance across solution designs and decision records.
+
+## 🎯 Suite Overview
+
+This suite provides three complementary modes to streamline architecture governance:
+
+### 1. 📚 **Knowledge Bot** (Available Now)
+Ask natural language questions about your architecture documentation, standards, security policies, and ADRs. Get instant, context-aware answers with source citations and confidence scores.
+
+### 2. 🔍 **Solution Design Audit** (Coming Soon)
+Submit solution design documents to validate compliance with:
+- Defined architecture standards
+- Existing ADRs (Architecture Decision Records)
+- Security policies and best practices
+- Domain-Driven Design principles
+
+Receive detailed audit reports highlighting gaps, risks, and recommendations.
+
+### 3. ✅ **ADR Validator** (Coming Soon)
+Validate Architecture Decision Records to ensure:
+- Compliance with established standards
+- Consistency across decisions
+- Identification of outdated standards
+- Suggestions for standards updates based on emerging patterns
 
 ## What's This All About?
 
@@ -10,6 +33,7 @@ It's **model-agnostic** - use AWS Bedrock (DeepSeek-R1, Claude), OpenAI (GPT-4),
 
 ## ✨ Features
 
+### Knowledge Bot Mode (Current)
 - **Chat Interface**: Clean Streamlit UI that feels like talking to a colleague
 - **Model-Agnostic**: Switch between AWS Bedrock, OpenAI, or Anthropic via config
 - **Smart Retrieval**: Contextual compression with top-6 chunk retrieval from FAISS
@@ -19,6 +43,10 @@ It's **model-agnostic** - use AWS Bedrock (DeepSeek-R1, Claude), OpenAI (GPT-4),
 - **Fast & Local**: Embeddings run locally, no external API calls for search
 - **Live Knowledge Refresh**: Update documentation without restarting the app
 - **Cost Efficient**: Only calls LLM for final answer generation
+
+### Upcoming Modes
+- **Solution Design Audit**: Automated compliance checking against standards and ADRs
+- **ADR Validator**: Bi-directional validation between decisions and standards
 
 ## 🏗️ Architecture
 
@@ -88,7 +116,7 @@ flowchart TB
 
 1. **Clone and navigate:**
    ```bash
-   cd arch-knowledge-bot
+   cd architecture-ai-suite
    ```
 
 2. **Set up virtual environment:**
@@ -184,7 +212,7 @@ The AI will search through your docs and give you answers with source citations.
 ## 📁 Project Structure
 
 ```
-arch-knowledge-bot/
+architecture-ai-suite/
 ├── app.py                  # Streamlit UI
 ├── brain.py                # RAG logic & DeepSeek-R1 integration
 ├── ingest.py               # Document ingestion pipeline
