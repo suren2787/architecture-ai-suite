@@ -1,10 +1,10 @@
-# 🏦 Digital Bank AI Architecture Auditor
+# 🏦 Digital Bank Architecture Knowledge Bot
 
-Ever wish you had an AI assistant that actually knew your architecture docs inside and out? Well, here you go! This tool helps you quickly find answers about architecture decisions, security policies, and design standards without digging through dozens of Markdown files.
+Ever wish you had an AI assistant that actually knew your architecture docs inside and out? Well, here you go! This knowledge bot helps you quickly find answers about architecture decisions, security policies, and design standards without digging through dozens of Markdown files.
 
 ## What's This All About?
 
-Built this to solve a real problem: our team kept asking the same questions about architecture decisions, security requirements, and design patterns. Instead of searching through ADRs and policy docs manually (or bothering the architects on Slack), I put together this RAG-powered Q&A system that does the heavy lifting.
+Built this to solve a real problem: our team kept asking the same questions about architecture decisions, security requirements, and design patterns. Instead of searching through ADRs and policy docs manually (or bothering the architects on Slack), I put together this RAG-powered knowledge bot that does the heavy lifting.
 
 It uses DeepSeek-R1 on AWS Bedrock with a local FAISS vector store to give you accurate, context-aware answers based on your actual documentation.
 
@@ -84,7 +84,7 @@ flowchart TB
 
 1. **Clone and navigate:**
    ```bash
-   cd architecture-ai-auditor
+   cd arch-knowledge-bot
    ```
 
 2. **Set up virtual environment:**
@@ -142,7 +142,7 @@ The AI will search through your docs and give you answers with source citations.
 ## 📁 Project Structure
 
 ```
-architecture-ai-auditor/
+arch-knowledge-bot/
 ├── app.py                  # Streamlit UI
 ├── brain.py                # RAG logic & DeepSeek-R1 integration
 ├── ingest.py               # Document ingestion pipeline

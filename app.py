@@ -3,7 +3,7 @@ from brain import ask_auditor
 
 # Page configuration
 st.set_page_config(
-    page_title="Digital Bank: AI Architecture Auditor",
+    page_title="Digital Bank: Architecture Knowledge Bot",
     page_icon="🏦",
     layout="wide"
 )
@@ -25,7 +25,7 @@ with st.sidebar:
         st.rerun()
 
 # Main title
-st.title("🏦 Digital Bank: AI Architecture Auditor")
+st.title("🏦 Digital Bank: Architecture Knowledge Bot")
 st.markdown("Ask questions about architecture standards, security policies, and design decisions.")
 
 # Display chat history
