@@ -50,9 +50,10 @@ def invoke_llm(prompt, max_tokens=1024, temperature=0.7, top_p=0.9):
     - AWS Bedrock (DeepSeek-R1, Claude, etc.)
     - OpenAI (GPT-4, GPT-3.5, etc.)
     - Anthropic (Claude via API)
+    - OpenWebUI (Proxy to Bedrock or other models)
     
     Configuration via environment variables:
-    - MODEL_PROVIDER: 'bedrock', 'openai', or 'anthropic'
+    - MODEL_PROVIDER: 'bedrock', 'openai', 'anthropic', or 'openwebui'
     - MODEL_NAME: specific model ID/name
     
     Args:
@@ -73,8 +74,10 @@ def invoke_llm(prompt, max_tokens=1024, temperature=0.7, top_p=0.9):
         return _invoke_openai(prompt, model_name, max_tokens, temperature, top_p)
     elif provider == 'anthropic':
         return _invoke_anthropic(prompt, model_name, max_tokens, temperature, top_p)
+    elif provider == 'openwebui':
+        return _invoke_openwebui(prompt, model_name, max_tokens, temperature, top_p)
     else:
-        raise ValueError(f"Unsupported MODEL_PROVIDER: {provider}. Use 'bedrock', 'openai', or 'anthropic'.")
+        raise ValueError(f"Unsupported MODEL_PROVIDER: {provider}. Use 'bedrock', 'openai', 'anthropic', or 'openwebui'.")
 
 def _invoke_bedrock(prompt, model_id, max_tokens=1024, temperature=0.7, top_p=0.9):
     """Invoke AWS Bedrock models (DeepSeek-R1, Claude, etc.)"""
@@ -180,6 +183,37 @@ def _invoke_anthropic(prompt, model_name, max_tokens=1024, temperature=0.7, top_
     )
     
     return response.content[0].text
+
+def _invoke_openwebui(prompt, model_name, max_tokens=1024, temperature=0.7, top_p=0.9):
+    """Invoke OpenWebUI API (OpenAI-compatible proxy to Bedrock or other models)"""
+    try:
+        from openai import OpenAI
+    except ImportError:
+        raise ImportError("OpenAI package not installed. Run: pip install openai")
+    
+    api_key = os.getenv('OPENWEBUI_API_KEY')
+    base_url = os.getenv('OPENWEBUI_BASE_URL')
+    
+    if not api_key:
+        raise ValueError("OPENWEBUI_API_KEY not set in environment variables")
+    if not base_url:
+        raise ValueError("OPENWEBUI_BASE_URL not set in environment variables")
+    
+    # Initialize OpenAI client with OpenWebUI endpoint
+    client = OpenAI(
+        api_key=api_key,
+        base_url=base_url
+    )
+    
+    response = client.chat.completions.create(
+        model=model_name,
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=max_tokens,
+        temperature=temperature,
+        top_p=top_p
+    )
+    
+    return response.choices[0].message.content
 
 # Backward compatibility alias
 def invoke_deepseek_r1(prompt, region_name=None, max_tokens=1024, temperature=0.7, top_p=0.9):

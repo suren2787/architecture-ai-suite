@@ -9,11 +9,11 @@ python-dotenv
 faiss-cpu
 beautifulsoup4
 requests
+openai
 
 # Optional: Install based on your MODEL_PROVIDER and EMBEDDING_PROVIDER
 # For OpenAI LLM (MODEL_PROVIDER=openai):
 # langchain-openai
-# openai
 
 # For Anthropic LLM (MODEL_PROVIDER=anthropic):
 # anthropic

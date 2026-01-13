@@ -32,8 +32,10 @@ def get_embeddings():
         return _get_openai_embeddings(model_name)
     elif provider == 'huggingface':
         return _get_huggingface_embeddings(model_name)
+    elif provider == 'openwebui':
+        return _get_openwebui_embeddings(model_name)
     else:
-        raise ValueError(f"Unsupported embedding provider: {provider}. Use 'bedrock', 'openai', or 'huggingface'")
+        raise ValueError(f"Unsupported embedding provider: {provider}. Use 'bedrock', 'openai', 'huggingface', or 'openwebui'")
 
 
 def _get_bedrock_embeddings(model_name):
@@ -97,6 +99,31 @@ def _get_huggingface_embeddings(model_name):
     return embeddings
 
 
+def _get_openwebui_embeddings(model_name):
+    """Get OpenWebUI embeddings (OpenAI-compatible proxy)"""
+    try:
+        from langchain_openai import OpenAIEmbeddings
+    except ImportError:
+        raise ImportError("Install langchain-openai: pip install langchain-openai")
+    
+    api_key = os.getenv('OPENWEBUI_API_KEY')
+    base_url = os.getenv('OPENWEBUI_BASE_URL')
+    
+    if not api_key:
+        raise ValueError("OPENWEBUI_API_KEY not found in .env")
+    if not base_url:
+        raise ValueError("OPENWEBUI_BASE_URL not found in .env")
+    
+    embeddings = OpenAIEmbeddings(
+        model=model_name,
+        openai_api_key=api_key,
+        openai_api_base=base_url
+    )
+    
+    print(f"✅ Using OpenWebUI embeddings: {model_name}")
+    return embeddings
+
+
 def get_embedding_info():
     """
     Get current embedding configuration info for display.
@@ -118,6 +145,10 @@ def get_embedding_info():
         display_name = "MiniLM-L6-v2 (Local)"
     else:
         display_name = model_name.split('/')[-1] if '/' in model_name else model_name
+    
+    # Add proxy info for OpenWebUI
+    if provider == 'OPENWEBUI':
+        provider = 'OPENWEBUI (Proxy)'
     
     return {
         'provider': provider,
