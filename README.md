@@ -269,7 +269,18 @@ That's it! The new docs will be searchable immediately.
 
 **Setup for OpenWebUI:**
 
-1. **Configure your `.env` file:**
+1. **Use the example configuration:**
+   ```bash
+   # Copy the OpenWebUI example configuration
+   cp .env.openwebui.example .env
+   
+   # Edit .env and update with your credentials
+   # - OPENWEBUI_API_KEY
+   # - OPENWEBUI_BASE_URL
+   # - MODEL_NAME (check available models in your OpenWebUI instance)
+   ```
+
+   Or manually configure your `.env` file:
    ```env
    # LLM Configuration
    MODEL_PROVIDER=openwebui
@@ -295,8 +306,15 @@ That's it! The new docs will be searchable immediately.
 
 4. **Test the connection:**
    ```bash
-   python -c "from brain import invoke_llm; print(invoke_llm('Hello, test'))"
+   # Run the OpenWebUI test script
+   python test_openwebui.py
    ```
+   
+   This will verify:
+   - ✅ Environment variables are set correctly
+   - ✅ Connection to OpenWebUI is working
+   - ✅ Model is accessible
+   - ✅ Embeddings are working (if configured)
 
 **OpenWebUI API Compatibility:**
 - OpenWebUI provides an OpenAI-compatible API
@@ -310,6 +328,9 @@ That's it! The new docs will be searchable immediately.
   ↓
 [FAISS Index] (local)
 ```
+
+**For detailed setup instructions, troubleshooting, and examples:**
+📖 See [docs/OPENWEBUI_SETUP.md](docs/OPENWEBUI_SETUP.md) for the complete OpenWebUI setup guide.
 
 ## Troubleshooting
 
