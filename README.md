@@ -89,51 +89,30 @@ flowchart TB
 5. LLM reads the context and answers based on *your actual docs*, not general internet knowledge
 6. You get an answer with links to the source material
 
-## Setup
+## 🚀 Quick Start
 
-**What you need:**
-- Python 3.8+
-- AWS account with Bedrock enabled (or OpenAI/Anthropic API key)
-- Your architecture docs (Markdown files work best, Confluence integration available)
-
-**Quick start:**
+**Prerequisites:** Python 3.8+ and an LLM API key (AWS Bedrock, OpenAI, or Anthropic)
 
 ```bash
-# 1. Clone and get into the folder
-cd architecture-ai-suite
-
-# 2. Virtual environment (keeps things clean)
-python -m venv .venv
-.venv\Scripts\Activate.ps1  # Windows PowerShell
-# source .venv/bin/activate  # Mac/Linux
-
-# 3. Install stuff
+# 1. Install dependencies
 pip install -r requirements.txt
 
-# 4. Copy config templates
-cp config.env.example config.env
+# 2. Configure your setup
 cp .env.example .env
+cp config.env.example config.env
+# Edit .env with your API credentials
+# Edit config.env with your organization settings
 
-# 5. Edit .env with your credentials
-# - For Bedrock: AWS keys and region
-# - For OpenAI: API key
-# - For Anthropic: API key
-# - For Confluence: email + API token (optional)
+# 3. Validate setup
+python validate_setup.py
 
-# 6. Edit config.env for your org
-# - Company name and icon
-# - Your critical ADRs
-# - Tech stack keywords
-# - What to check in audits
-
-# 7. Load your docs into the knowledge base
-python ingest.py
-
-# 8. Fire it up
+# 4. Launch the app
 streamlit run app.py
 ```
 
-Open `http://localhost:8501` and start asking questions.
+**📖 Detailed Setup:** See [SETUP.md](SETUP.md) for complete setup instructions, configuration options, and troubleshooting.
+
+**🎯 Try the Demo:** The repository includes sample ADRs and a pre-built FAISS index - you can start exploring immediately after step 1 and 4 (credentials needed only for LLM queries).
 
 ## Using It
 
@@ -243,14 +222,17 @@ The sample shows a realistic audit finding non-compliant data residency (databas
 
 ## 📝 Adding New Documents
 
+**Option 1: Local Files**
 1. Drop your Markdown files into the `docs/` folder
-2. Re-run the ingestion:
-   ```bash
-   python ingest.py
-   ```
+2. Re-run the ingestion: `python ingest.py`
 3. Restart the Streamlit app
 
-That's it! The new docs will be searchable immediately.
+**Option 2: Confluence Sync**
+1. Configure Confluence credentials in `.env`
+2. Set `CONFLUENCE_SPACE_KEY` in `config.env`
+3. Use the "Sync from Confluence" button in the app sidebar
+
+**💡 Tip:** See [SETUP.md](SETUP.md) for detailed instructions on document management, Confluence integration, and advanced configuration.
 
 ## Troubleshooting
 
