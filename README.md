@@ -16,7 +16,7 @@ Three tools that work together (one shipped, two coming):
 
 Our architects kept getting pinged on Slack with the same questions. Security team wanted consistent answers. Design reviews took forever because people hadn't read the relevant ADRs. So I spent a weekend wiring up FAISS + LLMs to handle the grunt work.
 
-Works with whatever LLM you've got access to - Bedrock (DeepSeek or Claude), OpenAI, Anthropic. Same code, your choice.
+Works with whatever LLM you've got access to - Bedrock (DeepSeek or Claude), OpenAI, Anthropic, or OpenWebUI (if your company uses it as a proxy). Same code, your choice.
 
 ## What It Does
 
@@ -170,10 +170,25 @@ Drop Markdown files in the `docs/` folder, run `python ingest.py`, done. Or use 
 | AWS Bedrock (Claude) | `MODEL_PROVIDER=bedrock`<br>`MODEL_NAME=anthropic.claude-3-sonnet-20240229-v1:0` | Mid-range |
 | OpenAI | `MODEL_PROVIDER=openai`<br>`MODEL_NAME=gpt-4` | Most expensive |
 | Anthropic | `MODEL_PROVIDER=anthropic`<br>`MODEL_NAME=claude-3-opus-20240229` | High-end |
+| **OpenWebUI** | `MODEL_PROVIDER=openwebui`<br>`MODEL_NAME=gpt-4` (or whatever's configured)<br>`OPENWEBUI_BASE_URL=http://your-proxy:8080/api/v1` | **Corporate proxy** |
+
+**When to use OpenWebUI:**
+- Your company blocks direct access to Bedrock/OpenAI
+- You have an internal OpenWebUI instance as a proxy
+- Network policies require all LLM traffic to go through a corporate gateway
+- Common in regulated industries (banking, healthcare, government)
 
 **Embeddings** (in `.env`):
 
-Default is Bedrock Titan (`EMBEDDING_PROVIDER=bedrock`). Works behind corporate firewalls, costs basically nothing (<$1/month for most orgs). Can also use OpenAI or HuggingFace if you prefer.
+Default is Bedrock Titan (`EMBEDDING_PROVIDER=bedrock`). Works behind corporate firewalls, costs basically nothing (<$1/month for most orgs). Can also use OpenAI, HuggingFace, or OpenWebUI if you prefer.
+
+**For OpenWebUI embeddings:**
+```env
+EMBEDDING_PROVIDER=openwebui
+EMBEDDING_MODEL=text-embedding-3-small  # Or whatever your OpenWebUI instance provides
+OPENWEBUI_BASE_URL=http://your-openwebui:8080/api/v1
+OPENWEBUI_API_KEY=your-key  # Optional, some instances don't require auth
+```
 
 **Organization Settings** (in `config.env`):
 

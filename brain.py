@@ -50,9 +50,10 @@ def invoke_llm(prompt, max_tokens=1024, temperature=0.7, top_p=0.9):
     - AWS Bedrock (DeepSeek-R1, Claude, etc.)
     - OpenAI (GPT-4, GPT-3.5, etc.)
     - Anthropic (Claude via API)
+    - OpenWebUI (Corporate proxy for LLMs with OpenAI-compatible API)
     
     Configuration via environment variables:
-    - MODEL_PROVIDER: 'bedrock', 'openai', or 'anthropic'
+    - MODEL_PROVIDER: 'bedrock', 'openai', 'anthropic', or 'openwebui'
     - MODEL_NAME: specific model ID/name
     
     Args:
@@ -73,8 +74,10 @@ def invoke_llm(prompt, max_tokens=1024, temperature=0.7, top_p=0.9):
         return _invoke_openai(prompt, model_name, max_tokens, temperature, top_p)
     elif provider == 'anthropic':
         return _invoke_anthropic(prompt, model_name, max_tokens, temperature, top_p)
+    elif provider == 'openwebui':
+        return _invoke_openwebui(prompt, model_name, max_tokens, temperature, top_p)
     else:
-        raise ValueError(f"Unsupported MODEL_PROVIDER: {provider}. Use 'bedrock', 'openai', or 'anthropic'.")
+        raise ValueError(f"Unsupported MODEL_PROVIDER: {provider}. Use 'bedrock', 'openai', 'anthropic', or 'openwebui'.")
 
 def _invoke_bedrock(prompt, model_id, max_tokens=1024, temperature=0.7, top_p=0.9):
     """Invoke AWS Bedrock models (DeepSeek-R1, Claude, etc.)"""
@@ -180,6 +183,53 @@ def _invoke_anthropic(prompt, model_name, max_tokens=1024, temperature=0.7, top_
     )
     
     return response.content[0].text
+
+def _invoke_openwebui(prompt, model_name, max_tokens=1024, temperature=0.7, top_p=0.9):
+    """
+    Invoke OpenWebUI proxy with OpenAI-compatible API.
+    
+    OpenWebUI is commonly used in corporate environments as a proxy to LLMs
+    when direct access to Bedrock/OpenAI is restricted by network policies.
+    
+    Args:
+        prompt (str): The prompt to send
+        model_name (str): Model name configured in OpenWebUI instance
+        max_tokens (int): Maximum tokens to generate
+        temperature (float): Sampling temperature
+        top_p (float): Nucleus sampling parameter
+        
+    Returns:
+        str: The response from the LLM via OpenWebUI
+    """
+    try:
+        from openai import OpenAI
+    except ImportError:
+        raise ImportError("OpenAI package not installed. Run: pip install openai")
+    
+    base_url = os.getenv('OPENWEBUI_BASE_URL')
+    api_key = os.getenv('OPENWEBUI_API_KEY', 'sk-dummy')  # Some OpenWebUI instances don't require auth
+    
+    if not base_url:
+        raise ValueError(
+            "OPENWEBUI_BASE_URL not set in environment variables. "
+            "Example: http://your-openwebui-instance:8080/api/v1"
+        )
+    
+    # OpenWebUI exposes an OpenAI-compatible API
+    client = OpenAI(
+        base_url=base_url,
+        api_key=api_key
+    )
+    
+    response = client.chat.completions.create(
+        model=model_name,
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=max_tokens,
+        temperature=temperature,
+        top_p=top_p
+    )
+    
+    return response.choices[0].message.content
 
 # Backward compatibility alias
 def invoke_deepseek_r1(prompt, region_name=None, max_tokens=1024, temperature=0.7, top_p=0.9):

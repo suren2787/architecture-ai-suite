@@ -5,6 +5,7 @@ Supports multiple embedding providers:
 - AWS Bedrock (amazon.titan-embed-text-v2:0)
 - OpenAI (text-embedding-3-small)
 - HuggingFace (sentence-transformers/all-MiniLM-L6-v2)
+- OpenWebUI (Corporate proxy with OpenAI-compatible API)
 """
 
 import os
@@ -32,8 +33,10 @@ def get_embeddings():
         return _get_openai_embeddings(model_name)
     elif provider == 'huggingface':
         return _get_huggingface_embeddings(model_name)
+    elif provider == 'openwebui':
+        return _get_openwebui_embeddings(model_name)
     else:
-        raise ValueError(f"Unsupported embedding provider: {provider}. Use 'bedrock', 'openai', or 'huggingface'")
+        raise ValueError(f"Unsupported embedding provider: {provider}. Use 'bedrock', 'openai', 'huggingface', or 'openwebui'")
 
 
 def _get_bedrock_embeddings(model_name):
@@ -94,6 +97,44 @@ def _get_huggingface_embeddings(model_name):
     )
     
     print(f"✅ Using HuggingFace embeddings: {model_name}")
+    return embeddings
+
+
+def _get_openwebui_embeddings(model_name):
+    """
+    Get OpenWebUI embeddings via OpenAI-compatible API.
+    
+    OpenWebUI is commonly used as a corporate proxy when direct access
+    to cloud embedding services is restricted by network policies.
+    
+    Args:
+        model_name (str): Embedding model name configured in OpenWebUI
+        
+    Returns:
+        OpenAIEmbeddings: Configured for OpenWebUI endpoint
+    """
+    try:
+        from langchain_openai import OpenAIEmbeddings
+    except ImportError:
+        raise ImportError("Install langchain-openai: pip install langchain-openai")
+    
+    base_url = os.getenv('OPENWEBUI_BASE_URL')
+    api_key = os.getenv('OPENWEBUI_API_KEY', 'sk-dummy')
+    
+    if not base_url:
+        raise ValueError(
+            "OPENWEBUI_BASE_URL not set in environment variables. "
+            "Example: http://your-openwebui-instance:8080/api/v1"
+        )
+    
+    # OpenWebUI provides OpenAI-compatible embeddings endpoint
+    embeddings = OpenAIEmbeddings(
+        model=model_name,
+        openai_api_key=api_key,
+        openai_api_base=base_url
+    )
+    
+    print(f"✅ Using OpenWebUI embeddings: {model_name} (via {base_url})")
     return embeddings
 
 
