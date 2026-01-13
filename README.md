@@ -164,16 +164,24 @@ Drop Markdown files in the `docs/` folder, run `python ingest.py`, done. Or use 
 
 **LLM Providers** (pick one in `.env`):
 
-| Provider | Config | Cost |
-|----------|--------|------|
-| AWS Bedrock (DeepSeek) | `MODEL_PROVIDER=bedrock`<br>`MODEL_NAME=us.deepseek.r1-v1:0` | Cheapest (~$0.40/M tokens) |
-| AWS Bedrock (Claude) | `MODEL_PROVIDER=bedrock`<br>`MODEL_NAME=anthropic.claude-3-sonnet-20240229-v1:0` | Mid-range |
-| OpenAI | `MODEL_PROVIDER=openai`<br>`MODEL_NAME=gpt-4` | Most expensive |
-| Anthropic | `MODEL_PROVIDER=anthropic`<br>`MODEL_NAME=claude-3-opus-20240229` | High-end |
+| Provider | Config | Cost | Use Case |
+|----------|--------|------|----------|
+| AWS Bedrock (DeepSeek) | `MODEL_PROVIDER=bedrock`<br>`MODEL_NAME=us.deepseek.r1-v1:0` | Cheapest (~$0.40/M tokens) | Direct AWS access |
+| AWS Bedrock (Claude) | `MODEL_PROVIDER=bedrock`<br>`MODEL_NAME=anthropic.claude-3-sonnet-20240229-v1:0` | Mid-range | Direct AWS access |
+| OpenAI | `MODEL_PROVIDER=openai`<br>`MODEL_NAME=gpt-4` | Most expensive | Direct OpenAI access |
+| Anthropic | `MODEL_PROVIDER=anthropic`<br>`MODEL_NAME=claude-3-opus-20240229` | High-end | Direct Anthropic access |
+| **OpenWebUI (Proxy)** | `MODEL_PROVIDER=openwebui`<br>`MODEL_NAME=deepseek-r1`<br>`OPENWEBUI_BASE_URL=https://your-instance.com/api/v1`<br>`OPENWEBUI_API_KEY=your-key` | Varies | **No direct AWS access**<br>Uses OpenWebUI as proxy |
 
 **Embeddings** (in `.env`):
 
-Default is Bedrock Titan (`EMBEDDING_PROVIDER=bedrock`). Works behind corporate firewalls, costs basically nothing (<$1/month for most orgs). Can also use OpenAI or HuggingFace if you prefer.
+Default is Bedrock Titan (`EMBEDDING_PROVIDER=bedrock`). Works behind corporate firewalls, costs basically nothing (<$1/month for most orgs). Can also use OpenAI, HuggingFace, or OpenWebUI if you prefer.
+
+| Provider | Config | Notes |
+|----------|--------|-------|
+| Bedrock Titan | `EMBEDDING_PROVIDER=bedrock`<br>`EMBEDDING_MODEL=amazon.titan-embed-text-v2:0` | Default, requires AWS |
+| OpenAI | `EMBEDDING_PROVIDER=openai`<br>`EMBEDDING_MODEL=text-embedding-3-small` | Requires OpenAI API key |
+| HuggingFace | `EMBEDDING_PROVIDER=huggingface`<br>`EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2` | Local, free |
+| **OpenWebUI** | `EMBEDDING_PROVIDER=openwebui`<br>`EMBEDDING_MODEL=text-embedding-3-small`<br>`OPENWEBUI_BASE_URL=https://your-instance.com/api/v1`<br>`OPENWEBUI_API_KEY=your-key` | **For environments without AWS access** |
 
 **Organization Settings** (in `config.env`):
 
@@ -252,6 +260,78 @@ The sample shows a realistic audit finding non-compliant data residency (databas
 
 That's it! The new docs will be searchable immediately.
 
+## 🌐 Using OpenWebUI as a Proxy
+
+**When to use OpenWebUI:**
+- Your environment doesn't provide direct AWS Bedrock access
+- You have an OpenWebUI instance set up as a proxy to Bedrock or other LLMs
+- You want centralized API management through OpenWebUI
+
+**Setup for OpenWebUI:**
+
+1. **Use the example configuration:**
+   ```bash
+   # Copy the OpenWebUI example configuration
+   cp .env.openwebui.example .env
+   
+   # Edit .env and update with your credentials
+   # - OPENWEBUI_API_KEY
+   # - OPENWEBUI_BASE_URL
+   # - MODEL_NAME (check available models in your OpenWebUI instance)
+   ```
+
+   Or manually configure your `.env` file:
+   ```env
+   # LLM Configuration
+   MODEL_PROVIDER=openwebui
+   MODEL_NAME=deepseek-r1  # or any model available in your OpenWebUI instance
+   OPENWEBUI_API_KEY=your-openwebui-api-key-here
+   OPENWEBUI_BASE_URL=https://your-openwebui-instance.com/api/v1
+   
+   # Embeddings Configuration (if using OpenWebUI for embeddings too)
+   EMBEDDING_PROVIDER=openwebui
+   EMBEDDING_MODEL=text-embedding-3-small  # or any embedding model in OpenWebUI
+   ```
+
+2. **Get your OpenWebUI API key:**
+   - Log into your OpenWebUI instance
+   - Go to Settings → Account → API Keys
+   - Generate a new API key
+   - Copy it to your `.env` file
+
+3. **Verify the model name:**
+   - Check which models are available in your OpenWebUI instance
+   - Use the exact model name as shown in OpenWebUI
+   - Common examples: `deepseek-r1`, `claude-3-sonnet`, `gpt-4`
+
+4. **Test the connection:**
+   ```bash
+   # Run the OpenWebUI test script
+   python test_openwebui.py
+   ```
+   
+   This will verify:
+   - ✅ Environment variables are set correctly
+   - ✅ Connection to OpenWebUI is working
+   - ✅ Model is accessible
+   - ✅ Embeddings are working (if configured)
+
+**OpenWebUI API Compatibility:**
+- OpenWebUI provides an OpenAI-compatible API
+- The code uses the `openai` Python library with a custom base URL
+- Both LLM inference and embeddings are supported
+- No changes needed to application code - just configuration
+
+**Architecture with OpenWebUI:**
+```
+[App] → [OpenWebUI Proxy] → [AWS Bedrock / Other LLM]
+  ↓
+[FAISS Index] (local)
+```
+
+**For detailed setup instructions, troubleshooting, and examples:**
+📖 See [docs/OPENWEBUI_SETUP.md](docs/OPENWEBUI_SETUP.md) for the complete OpenWebUI setup guide.
+
 ## Troubleshooting
 
 **App won't start / import errors**
@@ -271,6 +351,13 @@ That's it! The new docs will be searchable immediately.
 - API token needs read permissions on the space
 - Check the space key is correct in `config.env`
 
+**OpenWebUI connection errors**
+- Verify `OPENWEBUI_BASE_URL` is correct (should end with `/api/v1`)
+- Check `OPENWEBUI_API_KEY` is valid (generate new one if needed)
+- Ensure the model name matches what's available in your OpenWebUI instance
+- Test connectivity: `curl -H "Authorization: Bearer YOUR_KEY" YOUR_BASE_URL/models`
+- Check OpenWebUI instance is accessible from your network
+
 **Answers seem wrong**
 - Double-check your docs folder has the right content
 - Try rephrasing the question
@@ -279,6 +366,7 @@ That's it! The new docs will be searchable immediately.
 **Corporate firewall blocking HuggingFace**
 - Already handled - we use Bedrock embeddings by default (no external network calls)
 - Set `EMBEDDING_PROVIDER=bedrock` in `.env`
+- Or use `EMBEDDING_PROVIDER=openwebui` if you have OpenWebUI access
 
 ## What's Under the Hood
 

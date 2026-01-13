@@ -39,8 +39,15 @@ with st.sidebar:
     else:
         display_name = model_name.split('/')[-1] if '/' in model_name else model_name
     
-    st.markdown(f"**Provider:** {provider}")
-    st.markdown(f"**Model:** {display_name}")
+    # Show proxy info for OpenWebUI
+    if provider == 'OPENWEBUI':
+        base_url = os.getenv('OPENWEBUI_BASE_URL', 'Not configured')
+        st.markdown(f"**Provider:** {provider} (Proxy)")
+        st.markdown(f"**Endpoint:** {base_url}")
+        st.markdown(f"**Model:** {display_name}")
+    else:
+        st.markdown(f"**Provider:** {provider}")
+        st.markdown(f"**Model:** {display_name}")
     st.markdown("---")
     
     # Confluence Sync section
