@@ -8,7 +8,6 @@ Run this after completing the setup instructions in SETUP.md.
 
 import os
 import sys
-from pathlib import Path
 
 
 def print_header(text):
@@ -173,12 +172,18 @@ def check_documents():
     """Check if documents exist in docs/ folder"""
     print_header("Checking Knowledge Base Documents")
     
-    docs_path = Path('docs')
-    if not docs_path.exists():
+    import os
+    
+    docs_path = 'docs'
+    if not os.path.exists(docs_path):
         print_status("docs/ folder", False, "Not found")
         return False
     
-    md_files = list(docs_path.glob('**/*.md'))
+    md_files = []
+    for root, dirs, files in os.walk(docs_path):
+        for file in files:
+            if file.endswith('.md'):
+                md_files.append(os.path.join(root, file))
     
     if not md_files:
         print_status("Markdown files", False, "No .md files found in docs/")
@@ -186,7 +191,7 @@ def check_documents():
     
     print_status("Markdown files", True, f"Found {len(md_files)} document(s)")
     for md_file in md_files[:5]:  # Show first 5
-        print(f"   • {md_file.name}")
+        print(f"   • {os.path.basename(md_file)}")
     if len(md_files) > 5:
         print(f"   ... and {len(md_files) - 5} more")
     
@@ -197,16 +202,18 @@ def check_faiss_index():
     """Check if FAISS index exists"""
     print_header("Checking FAISS Vector Index")
     
-    index_path = Path('faiss_index')
+    import os
     
-    if not index_path.exists():
+    index_path = 'faiss_index'
+    
+    if not os.path.exists(index_path):
         print_status("faiss_index/ folder", False, "Not found - run 'python ingest.py'")
         return False
     
-    index_file = index_path / 'index.faiss'
-    pkl_file = index_path / 'index.pkl'
+    index_file = os.path.join(index_path, 'index.faiss')
+    pkl_file = os.path.join(index_path, 'index.pkl')
     
-    if not index_file.exists() or not pkl_file.exists():
+    if not os.path.exists(index_file) or not os.path.exists(pkl_file):
         print_status("FAISS index files", False, "Incomplete - run 'python ingest.py'")
         return False
     

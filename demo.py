@@ -8,8 +8,6 @@ Perfect for testing your setup or integrating into CI/CD pipelines.
 Note: Requires valid API credentials in .env file to query the LLM.
 """
 
-import sys
-
 
 def print_section(title):
     """Print a formatted section header"""
@@ -216,6 +214,8 @@ def demo_configuration():
 
 def main():
     """Run all demos"""
+    import sys
+    
     print("\n" + "╔" + "═" * 68 + "╗")
     print("║" + " " * 18 + "Architecture AI Suite Demo" + " " * 24 + "║")
     print("╚" + "═" * 68 + "╝")
@@ -270,6 +270,8 @@ def main():
 
 
 if __name__ == "__main__":
+    import sys
+    
     try:
         sys.exit(main())
     except KeyboardInterrupt:
