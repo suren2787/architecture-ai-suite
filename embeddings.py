@@ -6,20 +6,35 @@ Supports multiple embedding providers:
 - OpenAI (text-embedding-3-small)
 - HuggingFace (sentence-transformers/all-MiniLM-L6-v2)
 - OpenWebUI (Corporate proxy with OpenAI-compatible API)
+
+Uses OpenAI library directly instead of LangChain.
 """
 
 import os
+from typing import List
 from dotenv import load_dotenv
 
 load_dotenv()
 
 
-def get_embeddings():
+class EmbeddingsProvider:
+    """Base class for embeddings providers"""
+    
+    def embed_query(self, text: str) -> List[float]:
+        """Generate embedding for a single query text"""
+        raise NotImplementedError
+    
+    def embed_documents(self, texts: List[str]) -> List[List[float]]:
+        """Generate embeddings for multiple documents"""
+        raise NotImplementedError
+
+
+def get_embeddings() -> EmbeddingsProvider:
     """
     Get embeddings model based on EMBEDDING_PROVIDER environment variable.
     
     Returns:
-        Embeddings: LangChain embeddings instance
+        EmbeddingsProvider: Embeddings provider instance
         
     Raises:
         ValueError: If provider is unsupported or configuration is missing
@@ -39,63 +54,114 @@ def get_embeddings():
         raise ValueError(f"Unsupported embedding provider: {provider}. Use 'bedrock', 'openai', 'huggingface', or 'openwebui'")
 
 
+class BedrockEmbeddings(EmbeddingsProvider):
+    """AWS Bedrock embeddings provider"""
+    
+    def __init__(self, model_name: str, region: str = 'us-east-1'):
+        try:
+            import boto3
+        except ImportError:
+            raise ImportError("Install boto3: pip install boto3")
+        
+        self.model_name = model_name
+        self.client = boto3.client(
+            service_name='bedrock-runtime',
+            region_name=region
+        )
+    
+    def embed_query(self, text: str) -> List[float]:
+        """Generate embedding for a single query"""
+        import json
+        
+        body = json.dumps({"inputText": text})
+        response = self.client.invoke_model(
+            modelId=self.model_name,
+            body=body,
+            accept='application/json',
+            contentType='application/json'
+        )
+        
+        response_body = json.loads(response['body'].read().decode('utf-8'))
+        return response_body.get('embedding', [])
+    
+    def embed_documents(self, texts: List[str]) -> List[List[float]]:
+        """Generate embeddings for multiple documents"""
+        return [self.embed_query(text) for text in texts]
+
+
 def _get_bedrock_embeddings(model_name):
     """Get AWS Bedrock embeddings"""
-    try:
-        from langchain_aws import BedrockEmbeddings
-        import boto3
-    except ImportError:
-        raise ImportError("Install langchain-aws: pip install langchain-aws boto3")
-    
     region = os.getenv('AWS_REGION', 'us-east-1')
-    
-    # Initialize Bedrock client
-    bedrock_client = boto3.client(
-        service_name='bedrock-runtime',
-        region_name=region
-    )
-    
-    embeddings = BedrockEmbeddings(
-        client=bedrock_client,
-        model_id=model_name
-    )
-    
+    embeddings = BedrockEmbeddings(model_name=model_name, region=region)
     print(f"✅ Using AWS Bedrock embeddings: {model_name}")
     return embeddings
 
 
+class OpenAIEmbeddings(EmbeddingsProvider):
+    """OpenAI embeddings provider using openai library directly"""
+    
+    def __init__(self, model: str, api_key: str, base_url: str = None):
+        try:
+            from openai import OpenAI
+        except ImportError:
+            raise ImportError("Install openai: pip install openai")
+        
+        self.model = model
+        self.client = OpenAI(api_key=api_key, base_url=base_url)
+    
+    def embed_query(self, text: str) -> List[float]:
+        """Generate embedding for a single query"""
+        response = self.client.embeddings.create(
+            model=self.model,
+            input=text
+        )
+        return response.data[0].embedding
+    
+    def embed_documents(self, texts: List[str]) -> List[List[float]]:
+        """Generate embeddings for multiple documents"""
+        # OpenAI API supports batch embeddings
+        response = self.client.embeddings.create(
+            model=self.model,
+            input=texts
+        )
+        return [data.embedding for data in response.data]
+
+
 def _get_openai_embeddings(model_name):
     """Get OpenAI embeddings"""
-    try:
-        from langchain_openai import OpenAIEmbeddings
-    except ImportError:
-        raise ImportError("Install langchain-openai: pip install langchain-openai")
-    
     api_key = os.getenv('OPENAI_API_KEY')
     if not api_key:
         raise ValueError("OPENAI_API_KEY not found in .env")
     
-    embeddings = OpenAIEmbeddings(
-        model=model_name,
-        openai_api_key=api_key
-    )
-    
+    embeddings = OpenAIEmbeddings(model=model_name, api_key=api_key)
     print(f"✅ Using OpenAI embeddings: {model_name}")
     return embeddings
 
 
+class HuggingFaceEmbeddings(EmbeddingsProvider):
+    """HuggingFace embeddings provider (local)"""
+    
+    def __init__(self, model_name: str):
+        try:
+            from sentence_transformers import SentenceTransformer
+        except ImportError:
+            raise ImportError("Install sentence-transformers: pip install sentence-transformers")
+        
+        self.model = SentenceTransformer(model_name)
+    
+    def embed_query(self, text: str) -> List[float]:
+        """Generate embedding for a single query"""
+        return self.model.encode(text).tolist()
+    
+    def embed_documents(self, texts: List[str]) -> List[List[float]]:
+        """Generate embeddings for multiple documents"""
+        embeddings = self.model.encode(texts)
+        return [emb.tolist() for emb in embeddings]
+
+
 def _get_huggingface_embeddings(model_name):
     """Get HuggingFace embeddings (local)"""
-    try:
-        from langchain_huggingface import HuggingFaceEmbeddings
-    except ImportError:
-        raise ImportError("Install langchain-huggingface: pip install langchain-huggingface")
-    
-    embeddings = HuggingFaceEmbeddings(
-        model_name=model_name,
-        model_kwargs={'device': 'cpu'}
-    )
-    
+    embeddings = HuggingFaceEmbeddings(model_name=model_name)
     print(f"✅ Using HuggingFace embeddings: {model_name}")
     return embeddings
 
@@ -113,11 +179,6 @@ def _get_openwebui_embeddings(model_name):
     Returns:
         OpenAIEmbeddings: Configured for OpenWebUI endpoint
     """
-    try:
-        from langchain_openai import OpenAIEmbeddings
-    except ImportError:
-        raise ImportError("Install langchain-openai: pip install langchain-openai")
-    
     base_url = os.getenv('OPENWEBUI_BASE_URL')
     api_key = os.getenv('OPENWEBUI_API_KEY', 'sk-dummy')
     
@@ -128,12 +189,7 @@ def _get_openwebui_embeddings(model_name):
         )
     
     # OpenWebUI provides OpenAI-compatible embeddings endpoint
-    embeddings = OpenAIEmbeddings(
-        model=model_name,
-        openai_api_key=api_key,
-        openai_api_base=base_url
-    )
-    
+    embeddings = OpenAIEmbeddings(model=model_name, api_key=api_key, base_url=base_url)
     print(f"✅ Using OpenWebUI embeddings: {model_name} (via {base_url})")
     return embeddings
 

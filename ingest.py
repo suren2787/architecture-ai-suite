@@ -1,8 +1,6 @@
 import os
-from langchain_community.document_loaders import DirectoryLoader, TextLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.vectorstores import FAISS
-from langchain_core.documents import Document
+from text_utils import Document, TextSplitter, load_documents_from_directory
+from vector_store import FAISSVectorStore
 import confluence_sync
 from embeddings import get_embeddings
 
@@ -20,24 +18,19 @@ def ingest_documents():
     print(f"Loading Markdown files from: {docs_path}")
     
     # Load all Markdown files from the docs folder
-    # Use TextLoader to avoid requiring the unstructured package
-    loader = DirectoryLoader(
-        docs_path,
-        glob="**/*.md",
-        loader_cls=TextLoader,
-        loader_kwargs={'encoding': 'utf-8'},
-        show_progress=True
+    documents = load_documents_from_directory(
+        directory=docs_path,
+        glob_pattern="**/*.md",
+        encoding='utf-8'
     )
-    documents = loader.load()
     
     print(f"Loaded {len(documents)} documents")
     
     # Split documents into chunks
     # 1000 characters with 200 character overlap
-    text_splitter = RecursiveCharacterTextSplitter(
+    text_splitter = TextSplitter(
         chunk_size=1000,
         chunk_overlap=200,
-        length_function=len,
         separators=["\n\n", "\n", " ", ""]
     )
     
@@ -51,7 +44,7 @@ def ingest_documents():
     
     # Create FAISS vectorstore
     print("Creating FAISS vectorstore...")
-    vectorstore = FAISS.from_documents(chunks, embeddings)
+    vectorstore = FAISSVectorStore.from_documents(chunks, embeddings)
     
     # Save the vectorstore to local folder
     index_path = os.path.join(os.path.dirname(__file__), 'faiss_index')
@@ -88,7 +81,7 @@ def ingest_from_confluence(space_key=None, labels=None, merge_with_existing=True
     
     print(f"✅ Fetched {len(pages)} pages from Confluence")
     
-    # Convert Confluence pages to LangChain documents
+    # Convert Confluence pages to documents
     documents = []
     for page in pages:
         doc = Document(
@@ -103,10 +96,9 @@ def ingest_from_confluence(space_key=None, labels=None, merge_with_existing=True
         documents.append(doc)
     
     # Split documents into chunks
-    text_splitter = RecursiveCharacterTextSplitter(
+    text_splitter = TextSplitter(
         chunk_size=1000,
         chunk_overlap=200,
-        length_function=len,
         separators=["\n\n", "\n", " ", ""]
     )
     
@@ -124,7 +116,7 @@ def ingest_from_confluence(space_key=None, labels=None, merge_with_existing=True
     if merge_with_existing and os.path.exists(os.path.join(index_path, 'index.faiss')):
         print("Loading existing FAISS index...")
         try:
-            existing_vectorstore = FAISS.load_local(
+            existing_vectorstore = FAISSVectorStore.load_local(
                 index_path, 
                 embeddings,
                 allow_dangerous_deserialization=True
@@ -135,10 +127,10 @@ def ingest_from_confluence(space_key=None, labels=None, merge_with_existing=True
             print(f"✅ Merged {len(chunks)} Confluence chunks with existing index")
         except Exception as e:
             print(f"⚠️ Could not load existing index: {e}. Creating new index...")
-            vectorstore = FAISS.from_documents(chunks, embeddings)
+            vectorstore = FAISSVectorStore.from_documents(chunks, embeddings)
     else:
         print("Creating new FAISS index from Confluence pages...")
-        vectorstore = FAISS.from_documents(chunks, embeddings)
+        vectorstore = FAISSVectorStore.from_documents(chunks, embeddings)
     
     # Save the updated vectorstore
     print(f"Saving FAISS index to: {index_path}")
