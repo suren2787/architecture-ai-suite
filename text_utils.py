@@ -91,7 +91,7 @@ class TextSplitter:
             # If adding this split would exceed chunk_size
             if current_length + split_length > self.chunk_size and current_chunk:
                 # Save current chunk
-                chunk_text = " ".join(current_chunk) if " " in self.separators else "".join(current_chunk)
+                chunk_text = self._join_chunks(current_chunk)
                 chunks.append(chunk_text)
                 
                 # Start new chunk with overlap
@@ -105,10 +105,14 @@ class TextSplitter:
         
         # Add remaining chunk
         if current_chunk:
-            chunk_text = " ".join(current_chunk) if " " in self.separators else "".join(current_chunk)
+            chunk_text = self._join_chunks(current_chunk)
             chunks.append(chunk_text)
         
         return [chunk for chunk in chunks if chunk.strip()]
+    
+    def _join_chunks(self, chunks: List[str]) -> str:
+        """Helper to join chunks with appropriate separator."""
+        return " ".join(chunks) if " " in self.separators else "".join(chunks)
     
     def split_documents(self, documents: List[Document]) -> List[Document]:
         """Split documents into smaller chunks."""

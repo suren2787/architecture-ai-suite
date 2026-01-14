@@ -16,6 +16,55 @@ except ImportError:
 from text_utils import Document
 
 
+# Stub classes for LangChain compatibility during unpickling
+class InMemoryDocstore:
+    """Stub for langchain_community.docstore.in_memory.InMemoryDocstore"""
+    def __init__(self, _dict=None):
+        self._dict = _dict or {}
+    
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+
+
+class LangChainDocument:
+    """Stub for LangChain Document with proper unpickling support"""
+    def __init__(self, page_content="", metadata=None):
+        self.page_content = page_content
+        self.metadata = metadata or {}
+    
+    def __setstate__(self, state):
+        # Handle unpickling
+        self.__dict__.update(state)
+    
+    def __getstate__(self):
+        return self.__dict__
+
+
+class LangChainStub:
+    """Generic stub for unknown LangChain classes"""
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+    
+    def __getstate__(self):
+        return self.__dict__
+
+
+def _is_document_like(value) -> bool:
+    """
+    Check if an object appears to be a document.
+    
+    Handles multiple document formats:
+    - Objects with page_content attribute
+    - Objects with page_content in __dict__
+    - Pydantic models with nested __dict__ containing page_content
+    """
+    return (
+        hasattr(value, 'page_content') or
+        (hasattr(value, '__dict__') and isinstance(value.__dict__.get('__dict__'), dict) and 'page_content' in value.__dict__.get('__dict__', {})) or
+        (hasattr(value, '__dict__') and 'page_content' in value.__dict__)
+    )
+
+
 class FAISSVectorStore:
     """
     FAISS vector store that replaces langchain_community.vectorstores.FAISS
@@ -216,28 +265,6 @@ class FAISSVectorStore:
         if not os.path.exists(metadata_file):
             raise FileNotFoundError(f"Metadata file not found at: {metadata_file}")
         
-        # Create stub classes for LangChain objects we need to unpickle
-        class InMemoryDocstore:
-            """Stub for langchain_community.docstore.in_memory.InMemoryDocstore"""
-            def __init__(self, _dict=None):
-                self._dict = _dict or {}
-            
-            def __setstate__(self, state):
-                self.__dict__.update(state)
-        
-        class LangChainDocument:
-            """Stub for LangChain Document with proper unpickling support"""
-            def __init__(self, page_content="", metadata=None):
-                self.page_content = page_content
-                self.metadata = metadata or {}
-            
-            def __setstate__(self, state):
-                # Handle unpickling
-                self.__dict__.update(state)
-            
-            def __getstate__(self):
-                return self.__dict__
-        
         # Create a custom unpickler that can handle LangChain objects
         class LangChainCompatibleUnpickler(pickle.Unpickler):
             def find_class(self, module, name):
@@ -253,8 +280,7 @@ class FAISSVectorStore:
                         return super().find_class(module, name)
                     except (ImportError, AttributeError):
                         print(f"⚠️  Using stub for unknown LangChain class: {module}.{name}")
-                        # Return a simple class that can be unpickled
-                        return type(name, (), {})
+                        return LangChainStub
                 return super().find_class(module, name)
         
         with open(metadata_file, 'rb') as f:
@@ -296,13 +322,7 @@ class FAISSVectorStore:
         converted_docstore = {}
         for key, value in docstore.items():
             # Check if this is a document-like object
-            is_document = (
-                hasattr(value, 'page_content') or
-                (hasattr(value, '__dict__') and isinstance(value.__dict__.get('__dict__'), dict) and 'page_content' in value.__dict__.get('__dict__', {})) or
-                (hasattr(value, '__dict__') and 'page_content' in value.__dict__)
-            )
-            
-            if is_document:
+            if _is_document_like(value):
                 # This looks like a document, ensure it's our Document class
                 if not isinstance(value, OurDocument):
                     # Try different ways to extract page_content and metadata

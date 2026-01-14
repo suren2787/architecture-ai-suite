@@ -107,7 +107,7 @@ class OpenAIEmbeddings(EmbeddingsProvider):
             raise ImportError("Install openai: pip install openai")
         
         self.model = model
-        self.client = OpenAI(api_key=api_key, base_url=base_url) if base_url else OpenAI(api_key=api_key)
+        self.client = OpenAI(api_key=api_key, base_url=base_url)
     
     def embed_query(self, text: str) -> List[float]:
         """Generate embedding for a single query"""
