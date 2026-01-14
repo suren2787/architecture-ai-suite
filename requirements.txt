@@ -1,23 +1,16 @@
 boto3
 streamlit
-langchain
-langchain-aws
-langchain-community
-langchain-text-splitters
 pypdf
 python-dotenv
 faiss-cpu
 beautifulsoup4
 requests
+openai
 
-# Optional: Install based on your MODEL_PROVIDER and EMBEDDING_PROVIDER
-# For OpenAI LLM (MODEL_PROVIDER=openai):
-# langchain-openai
-# openai
+# Optional: Install based on your EMBEDDING_PROVIDER
+# For HuggingFace embeddings (EMBEDDING_PROVIDER=huggingface):
+# sentence-transformers
 
+# Optional: Install based on your MODEL_PROVIDER
 # For Anthropic LLM (MODEL_PROVIDER=anthropic):
 # anthropic
-
-# For HuggingFace embeddings (EMBEDDING_PROVIDER=huggingface):
-# langchain-huggingface
-# sentence-transformers

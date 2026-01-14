@@ -2,7 +2,7 @@ import boto3
 import json
 import os
 from dotenv import load_dotenv
-from langchain_community.vectorstores import FAISS
+from vector_store import FAISSVectorStore
 from embeddings import get_embeddings
 import config
 
@@ -21,7 +21,7 @@ def load_faiss_index(index_path=None):
                                    Defaults to 'faiss_index' in the script directory.
     
     Returns:
-        FAISS: The loaded FAISS vectorstore
+        FAISSVectorStore: The loaded FAISS vectorstore
     """
     global _vectorstore
     
@@ -38,7 +38,7 @@ def load_faiss_index(index_path=None):
     embeddings = get_embeddings()
     
     # Load the FAISS index
-    _vectorstore = FAISS.load_local(index_path, embeddings, allow_dangerous_deserialization=True)
+    _vectorstore = FAISSVectorStore.load_local(index_path, embeddings, allow_dangerous_deserialization=True)
     
     return _vectorstore
 

@@ -3,13 +3,13 @@ Test script for embeddings and FAISS integration
 """
 
 from embeddings import get_embeddings, test_embeddings
-from langchain_core.documents import Document
-from langchain_community.vectorstores import FAISS
+from text_utils import Document
+from vector_store import FAISSVectorStore
 
 def test_faiss_creation():
     """Test creating a FAISS index with configured embeddings"""
     print("\n" + "="*60)
-    print("Testing FAISS Index Creation with Bedrock Embeddings")
+    print("Testing FAISS Index Creation with Configured Embeddings")
     print("="*60 + "\n")
     
     try:
@@ -26,7 +26,7 @@ def test_faiss_creation():
         print(f"Creating FAISS index with {len(docs)} test documents...")
         
         # Create FAISS vectorstore
-        vectorstore = FAISS.from_documents(docs, embeddings)
+        vectorstore = FAISSVectorStore.from_documents(docs, embeddings)
         
         print("✅ FAISS index created successfully!\n")
         
