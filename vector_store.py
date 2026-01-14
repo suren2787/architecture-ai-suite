@@ -188,6 +188,7 @@ class FAISSVectorStore:
     def load_local(cls, folder_path: str, embeddings_provider, allow_dangerous_deserialization: bool = False):
         """
         Load FAISS index from local folder.
+        Supports loading indices created with LangChain for backward compatibility.
         
         Args:
             folder_path: Path to load the index from
@@ -210,22 +211,144 @@ class FAISSVectorStore:
         
         index = faiss.read_index(index_file)
         
-        # Load metadata
+        # Load metadata with LangChain compatibility
         metadata_file = os.path.join(folder_path, 'index.pkl')
         if not os.path.exists(metadata_file):
             raise FileNotFoundError(f"Metadata file not found at: {metadata_file}")
         
-        with open(metadata_file, 'rb') as f:
-            metadata = pickle.load(f)
+        # Create stub classes for LangChain objects we need to unpickle
+        class InMemoryDocstore:
+            """Stub for langchain_community.docstore.in_memory.InMemoryDocstore"""
+            def __init__(self, _dict=None):
+                self._dict = _dict or {}
+            
+            def __setstate__(self, state):
+                self.__dict__.update(state)
         
-        docstore = metadata.get('docstore', {})
-        index_to_docstore_id = metadata.get('index_to_docstore_id', {})
+        class LangChainDocument:
+            """Stub for LangChain Document with proper unpickling support"""
+            def __init__(self, page_content="", metadata=None):
+                self.page_content = page_content
+                self.metadata = metadata or {}
+            
+            def __setstate__(self, state):
+                # Handle unpickling
+                self.__dict__.update(state)
+            
+            def __getstate__(self):
+                return self.__dict__
+        
+        # Create a custom unpickler that can handle LangChain objects
+        class LangChainCompatibleUnpickler(pickle.Unpickler):
+            def find_class(self, module, name):
+                # Map LangChain Document to our stub class
+                if 'langchain' in module and name == 'Document':
+                    return LangChainDocument
+                # Handle InMemoryDocstore
+                if 'langchain' in module and 'InMemoryDocstore' in name:
+                    return InMemoryDocstore
+                # For other LangChain classes, try standard pickle
+                if 'langchain' in module:
+                    try:
+                        return super().find_class(module, name)
+                    except (ImportError, AttributeError):
+                        print(f"⚠️  Using stub for unknown LangChain class: {module}.{name}")
+                        # Return a simple class that can be unpickled
+                        return type(name, (), {})
+                return super().find_class(module, name)
+        
+        with open(metadata_file, 'rb') as f:
+            metadata = LangChainCompatibleUnpickler(f).load()
+        
+        # Handle different metadata formats
+        # LangChain format: (docstore, index_to_docstore_id)
+        # Our format: {'docstore': ..., 'index_to_docstore_id': ...}
+        if isinstance(metadata, tuple) and len(metadata) == 2:
+            # LangChain format
+            docstore_obj, index_to_docstore_id = metadata
+        elif isinstance(metadata, dict):
+            # Our format
+            docstore_obj = metadata.get('docstore', {})
+            index_to_docstore_id = metadata.get('index_to_docstore_id', {})
+        else:
+            raise ValueError(f"Unknown metadata format: {type(metadata)}")
+        
+        # Handle different docstore formats
+        if hasattr(docstore_obj, '_dict'):
+            # LangChain InMemoryDocstore - the _dict maps UUIDs to Documents
+            # But index_to_docstore_id maps indices to UUIDs
+            docstore_dict = docstore_obj._dict
+            
+            # Rebuild docstore to map indices directly to documents
+            docstore = {}
+            for idx, uuid in index_to_docstore_id.items():
+                if uuid in docstore_dict:
+                    docstore[idx] = docstore_dict[uuid]
+        elif isinstance(docstore_obj, dict):
+            # Already a dict
+            docstore = docstore_obj
+        else:
+            # Try to convert to dict
+            docstore = dict(docstore_obj) if docstore_obj else {}
+        
+        # Convert LangChain documents to our Document class if needed
+        from text_utils import Document as OurDocument
+        converted_docstore = {}
+        for key, value in docstore.items():
+            # Check if this is a document-like object
+            is_document = (
+                hasattr(value, 'page_content') or
+                (hasattr(value, '__dict__') and isinstance(value.__dict__.get('__dict__'), dict) and 'page_content' in value.__dict__.get('__dict__', {})) or
+                (hasattr(value, '__dict__') and 'page_content' in value.__dict__)
+            )
+            
+            if is_document:
+                # This looks like a document, ensure it's our Document class
+                if not isinstance(value, OurDocument):
+                    # Try different ways to extract page_content and metadata
+                    page_content = None
+                    metadata = None
+                    
+                    # Method 1: Direct attributes
+                    if hasattr(value, 'page_content'):
+                        page_content = value.page_content
+                        metadata = getattr(value, 'metadata', {})
+                    # Method 2: __dict__ containing page_content directly
+                    elif hasattr(value, '__dict__') and 'page_content' in value.__dict__:
+                        page_content = value.__dict__['page_content']
+                        metadata = value.__dict__.get('metadata', {})
+                    # Method 3: Pydantic model with nested __dict__
+                    elif hasattr(value, '__dict__') and isinstance(value.__dict__.get('__dict__'), dict):
+                        inner_dict = value.__dict__['__dict__']
+                        page_content = inner_dict.get('page_content', '')
+                        metadata = inner_dict.get('metadata', {})
+                    
+                    if page_content is not None:
+                        converted_docstore[key] = OurDocument(
+                            page_content=page_content,
+                            metadata=metadata
+                        )
+                    else:
+                        # Fallback: keep original if we can't extract content
+                        converted_docstore[key] = value
+                else:
+                    converted_docstore[key] = value
+            else:
+                converted_docstore[key] = value
+        
+        # For LangChain indices, index_to_docstore_id maps to UUIDs, but we've already
+        # remapped to use indices directly, so reset it
+        if isinstance(metadata, tuple):
+            # Create simple index mapping for our format
+            index_to_docstore_id = {i: i for i in range(len(converted_docstore))}
         
         print(f"✅ Loaded FAISS index from {folder_path} ({index.ntotal} vectors)")
+        if len(docstore) != len(converted_docstore):
+            print(f"   Converted {len(docstore)} -> {len(converted_docstore)} documents")
         
         return cls(
             embeddings_provider=embeddings_provider,
             index=index,
-            docstore=docstore,
+            docstore=converted_docstore,
             index_to_docstore_id=index_to_docstore_id
         )

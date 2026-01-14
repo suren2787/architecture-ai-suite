@@ -3,6 +3,7 @@ streamlit
 pypdf
 python-dotenv
 faiss-cpu
+numpy
 beautifulsoup4
 requests
 openai
