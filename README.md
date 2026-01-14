@@ -300,8 +300,8 @@ That's it! The new docs will be searchable immediately.
 - **Streamlit** - UI framework
 - **FAISS** - Vector search (CPU-based, runs locally)
 - **AWS Bedrock Titan** - Embeddings (1024-dim, firewall-friendly)
-- **LangChain** - Glue that holds the RAG pipeline together
-- **Model-agnostic LLM layer** - Swap between Bedrock/OpenAI/Anthropic without code changes
+- **OpenAI Library** - Direct API integration for OpenAI and OpenWebUI providers
+- **Model-agnostic LLM layer** - Swap between Bedrock/OpenAI/Anthropic/OpenWebUI without code changes
 
 Total cost for embeddings: <$1/month for most orgs. LLM costs depend on which one you pick.
 
